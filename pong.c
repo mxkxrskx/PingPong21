@@ -1,215 +1,233 @@
 #include <stdio.h>
-#define MAX_X 25
-#define MAX_Y 81
+#include <stdbool.h>
 
-int check_rocket(int i, int j, int x_rocket, int y_rocket){
+#define ROWS 25
+#define COLUMNS 81
+#define WIN_SCORE 21
+#define COLUMN_LEFT_ROCKET 1
+#define COLUMN_RIGHT_ROCKET COLUMNS-1
+#define DEBUG_MODE 0
+
+enum Dir {
+	RIGHT_UP,
+  	RIGHT_DOWN,
+  	LEFT_UP,
+  	LEFT_DOWN	
+};
+typedef enum Dir Dir;
+
+bool is_rocket(int row, int column, int row_rocket, int column_rocket){
     //Проверка где находятся ракетки
-    int flag = (i == x_rocket && j == y_rocket) || (i == x_rocket + 1 && j == y_rocket) ||
-                 (i == x_rocket - 1 && j == y_rocket);
-    return flag;
+    return ((row == row_rocket) || (row == row_rocket + 1) || (row == row_rocket - 1)) && (column == column_rocket);
 }
 
-void inside_field(int i, int j, int xball, int yball, int x1_rocket, int x2_rocket, int y1_rocket, int y2_rocket){
-    //Печаетаем "объекты" внутри поля по координатам
-    if (i == xball && j == yball)
-        printf("0");
-    else if (check_rocket(i, j, x1_rocket, y1_rocket))
-        printf("[");
-    else if (check_rocket(i, j, x2_rocket, y2_rocket))
-        printf("]");  
-    else if (j == 41)
-        printf("*");
-    else {
+char inside_field(int row, int column, int row_ball, int column_ball, int row_left_rocket, int row_right_rocket){
+    //Печаетаем "объекты" внутри поля по координатам	
+  	char c = ' ';
+    if (row == row_ball && column == column_ball){
+        c = '0'; 
+    }
+    else if (is_rocket(row, column, row_left_rocket, COLUMN_LEFT_ROCKET)){
+        c = '[';
+    } 
+    else if (is_rocket(row, column, row_right_rocket, COLUMN_RIGHT_ROCKET)){
+        c = ']';  
+    }
+    else if (column == COLUMNS/2){
+        c = '*';
+    }
+  	return c;
+}
+
+char field_value(int row,				       int column,
+                 int row_ball,		     int column_ball,
+                 int row_left_rocket,
+                 int row_right_rocket) {
+    //Печатаем по координатам все поле
+  	char c;
+    if(row != 0 && row != ROWS && column != 0 && column != COLUMNS){
+        c = inside_field(row, column, row_ball, column_ball, row_left_rocket, row_right_rocket);
+    }
+    else if(column == 0 || column == COLUMNS){
+        c = '|';
+    }
+    else{
+        c = '#';
+    }
+    return c;
+}
+
+void print_space(int column){
+    if(column == COLUMNS){
+        printf("\n");
+    }
+}
+
+void print_field(int row_ball, int column_ball, int row_left_rocket, int row_right_rocket) {
+    for (int row = 0; row <= ROWS; row++) {
+        for (int column = 0; column <= COLUMNS; column++) {
+            printf("%c", field_value(row, column, row_ball, column_ball, row_left_rocket, row_right_rocket));
+            print_space(column);
+        }
+    }
+}
+
+void show_score(int score_left, int score_right) {
+    printf("Первый игрок: %d", score_left);
+    int str_len_one = 15;
+    for (int i = 0; i <= COLUMNS - str_len_one*2 - (score_left > 9) - (score_right > 9); i+=1)
+    {
         printf(" ");
     }
+    printf("Второй игрок: %d", score_right);
 }
 
-void print_all(int i, int j, int xball, int yball, int x1_rocket, int y1_rocket, int x2_rocket,
-               int y2_rocket) {
-    //Печатаем по координатам все поле
-    if (i != 0 && i != MAX_X && j != 0 && j != MAX_Y) {
-        inside_field(i, j, xball, yball, x1_rocket, x2_rocket, y1_rocket, y2_rocket);
-    } else if (j == 0) {
-        printf("|");
-    } else if (j == MAX_Y) {
-        printf("|\n");
-    } else {
-        printf("#");
-    }
-}
-
-void print_field(int xball, int yball, int x1_rocket, int y1_rocket, int x2_rocket, int y2_rocket) {
-    for (int i = 0; i <= MAX_X; i++) {
-        for (int j = 0; j <= MAX_Y; j++) {
-            print_all(i, j, xball, yball, x1_rocket, y1_rocket, x2_rocket, y2_rocket);
-        }
-    }
-}
-
-void show_score(int score1, int score2) {
-    //Показывает счет на определенном расстояние
-    for (int i = 0; i <= 51; i++) {
-        if (i == 0) {
-            printf("Первый игрок: %d", score1);
-        } else if (i == 51) {
-            printf("Второй игрок: %d", score2);
-        } else {
-            printf(" ");
-        }
-    }
-}
-
-void print_winner(int score1, int score2, int flag) {
+void print_winner(int score_left, int score_right, int flag) {
     if (flag == 0) {
-        printf("Победил первый игрок со счетом %d:%d", score1, score2);
+        printf("Победил первый игрок со счетом %d:%d\n", score_left, score_right);
     }
     if (flag == 1) {
-        printf("Победил второй игрок со счетом %d:%d", score1, score2);
+        printf("Победил второй игрок со счетом %d:%d\n", score_left, score_right);
     }
 }
 
-int ball_and_rocket(int xball, int yball, int x_rocket, int y_rocket){
-    //
-    int flag = 0;
-    if((xball == x_rocket && yball == y_rocket - 1) ||
-                           (xball == x_rocket + 1 && yball == y_rocket - 1) ||
-                           (xball == x_rocket - 1 && yball == y_rocket - 1)){
-                            flag = 1;
-                           }
-    return flag;
+bool ball_and_rocket(int row_ball, int column_ball, int row_rocket, int column_rocket) {
+    if(column_ball > COLUMNS/2) column_rocket--;
+    if(column_ball < COLUMNS/2) column_rocket++;
+    return (row_ball == row_rocket || row_ball == row_rocket + 1 || row_ball == row_rocket - 1) && column_ball == column_rocket;
 }
 
-void redirect_0(int *xball, int *yball, int *check_dir, int *score, int x2_rocket, int y2_rocket){
-    if(*xball <= 1){
-        *check_dir = 1;
+void redirect_right_up(int *row_ball, int *column_ball, Dir *dir_ball, int *score, int row_right_rocket){
+    if(*row_ball <= 1){
+         *dir_ball = RIGHT_DOWN;
     }
-    else if(*yball == MAX_Y - 1){
-        *score +=1;
-        *yball = 41;
-        *xball = 13;
+    else if(*column_ball == COLUMNS - 1){
+         *score +=1;
+         *column_ball = COLUMNS/2;
+         *row_ball = ROWS/2;
     }
-    else if(ball_and_rocket(*xball, *yball, x2_rocket, y2_rocket)){
-        *check_dir = 2;
+    else if(ball_and_rocket(*row_ball, *column_ball, row_right_rocket, COLUMN_RIGHT_ROCKET)){
+         *dir_ball = LEFT_UP;
     }
     else{
-        *xball-=1;
-        *yball+=1;
+         *row_ball-=1;
+         *column_ball+=1;
     }
 }
 
-void redirect_1(int *xball, int *yball, int *check_dir, int *score, int x2_rocket, int y2_rocket){
-    if(*xball >= MAX_X - 1){
-        *check_dir = 0;
+void redirect_right_down(int *row_ball, int *column_ball, Dir* dir_ball, int *score, int row_right_rocket){
+    if(*row_ball >= ROWS - 1){
+        *dir_ball = RIGHT_UP;
     }
-    else if(*yball == MAX_Y - 1){
+    else if(*column_ball == COLUMNS - 1){
         *score+=1;
-        *yball = 41;
-        *xball = 13;
+        *column_ball = COLUMNS/2;
+        *row_ball = ROWS/2;
     }
-    else if(ball_and_rocket(*xball, *yball, x2_rocket, y2_rocket)){
-        *check_dir = 3;
+    else if(ball_and_rocket(*row_ball, *column_ball, row_right_rocket, COLUMN_RIGHT_ROCKET)){
+        *dir_ball = LEFT_DOWN;
     }
     else{
-        *xball+=1;
-        *yball+=1;
+        *row_ball+=1;
+        *column_ball+=1;
     }
 }
 
-void redirect_2(int *xball, int *yball, int *check_dir, int *score, int x1_rocket, int y1_rocket){
-    if(*xball <= 1){
-        *check_dir = 3;
+void redirect_left_up(int *row_ball, int *column_ball, Dir* dir_ball, int *score, int row_left_rocket){
+    if(*row_ball <= 1){
+        *dir_ball = LEFT_DOWN;
     }
-    else if(*yball == 1){
+    else if(*column_ball == 1){
         *score+=1;
     }
-    else if(ball_and_rocket(*xball, *yball, x1_rocket, y1_rocket)){
-        *check_dir = 0;
+    else if(ball_and_rocket(*row_ball, *column_ball, row_left_rocket, COLUMN_LEFT_ROCKET)){
+        *dir_ball = RIGHT_UP;
     }
     else{
-        *xball-=1;
-        *yball-=1;
+        *row_ball-=1;
+        *column_ball-=1;
     }
 }
 
-void redirect_3(int *xball, int *yball, int *check_dir, int *score, int x1_rocket, int y1_rocket){
-    if(*xball <= MAX_X - 1){
-        *check_dir = 2;
+void redirect_left_down(int *row_ball, int *column_ball, Dir* dir_ball, int *score, int row_left_rocket){
+    if(*row_ball >= ROWS - 1){
+        *dir_ball = LEFT_UP;
     }
-    else if(*yball == 1){
+    else if(*column_ball == 1){
         *score+=1;
-        *yball = 41;
-        *xball = 13;
+        *column_ball = COLUMNS/2;
+        *row_ball = ROWS/2;
     }
-    else if(ball_and_rocket(*xball, *yball, x1_rocket, y1_rocket)){
-        *check_dir = 1;
+    else if(ball_and_rocket(*row_ball, *column_ball, row_left_rocket, COLUMN_LEFT_ROCKET)){
+        *dir_ball = RIGHT_DOWN;
     }
     else{
-        *xball+=1;
-        *yball-=1;
+        *row_ball+=1;
+        *column_ball-=1;
     }
 }
 
-void game_button(int *x1_rocket, int *x2_rocket){
+void game_button(int *row_left_rocket, int *row_right_rocket){
     char c = getchar();
-    if (c == 'a' && *x1_rocket != 2) *x1_rocket-=1;
-    if (c == 'z' && *x1_rocket != 23) *x1_rocket+=1;
-    if (c == 'k' && *x2_rocket != 2) *x2_rocket-=1;
-    if (c == 'm' && *x2_rocket != 23) *x2_rocket+=1;
+    if (c == 'a' && *row_left_rocket != 2) *row_left_rocket-=1;
+    if (c == 'z' && *row_left_rocket != ROWS-2) *row_left_rocket+=1;
+    if (c == 'k' && *row_right_rocket != 2) *row_right_rocket-=1;
+    if (c == 'm' && *row_right_rocket != ROWS-2) *row_right_rocket+=1;
 }
 
-void end_game(int *flag_finish, int score1, int score2){
-    if (score1 == 21 && score1 > score2) {
-        print_winner(score1, score2, 0);
-        *flag_finish = 1;
+void end_game(int score_left, int score_right){
+    if (score_left == WIN_SCORE && score_left > score_right) {
+        print_winner(score_left, score_right, 0);
     }
-    if (score2 == 21 && score2 > score1) {
-        print_winner(score1, score2, 1);
-        *flag_finish = 1;
+    if (score_right == WIN_SCORE && score_right > score_left) {
+        print_winner(score_left, score_right, 1);
     }
 }
 
+bool is_end_game(int score_left, int score_right) {
+  bool flag = 0;
+  if(score_left == WIN_SCORE || score_right == WIN_SCORE){
+    flag = 1;
+  }
+  return flag;
+}
 
 void Pong() {
     //Главная функция, в которой происходят все действия
-    int x1_rocket = 13;
-    int y1_rocket = 1;
-    int x2_rocket = 13;
-    int y2_rocket = 80;
+    int row_left_rocket = ROWS/2;
+    int row_right_rocket = ROWS/2;
 
-    int score1 = 0;
-    int score2 = 0;
+    int score_left = 0;
+    int score_right = 0;
 
-    int yball = 41;
-    int xball = 13;
-    int check_dir = 0;
+    int column_ball = COLUMNS/2;
+    int row_ball = ROWS/2;
+    Dir dir_ball = RIGHT_UP;
 
-    int flag_finish = 0;
-
-    while (1) {
-        end_game(&flag_finish, score1, score2);
-        if (flag_finish) {
-            break;
-        }
-        show_score(score1, score2);
+    while (is_end_game(score_left, score_right) == false) {
+        show_score(score_left, score_right);
         printf("\n");
-        print_field(xball, yball, x1_rocket, y1_rocket, x2_rocket, y2_rocket);
+        print_field(row_ball, column_ball, row_left_rocket, row_right_rocket);
 
-        game_button(&x1_rocket, &x2_rocket);
-        //Реализация смены направления мяча 
-        if (check_dir == 0) {
-            redirect_0(&xball, &yball, &check_dir, &score1, x2_rocket, y2_rocket);
-        }
-        if (check_dir == 1) {
-            redirect_1(&xball, &yball, &check_dir, &score1, x2_rocket, y2_rocket);
-        }
-        if (check_dir == 2) {
-            redirect_2(&xball, &yball, &check_dir, &score2, x1_rocket, y1_rocket);
-        }
-        if (check_dir == 3) {
-            redirect_3(&xball, &yball, &check_dir, &score2, x1_rocket, y1_rocket);
+        game_button(&row_left_rocket, &row_right_rocket);
+        switch (dir_ball)
+        {
+        case RIGHT_UP:
+            redirect_right_up(&row_ball, &column_ball, &dir_ball, &score_left, row_right_rocket);
+            break;
+        case RIGHT_DOWN:
+            redirect_right_down(&row_ball, &column_ball, &dir_ball, &score_left, row_right_rocket);
+            break;
+        case LEFT_UP:
+            redirect_left_up(&row_ball, &column_ball, &dir_ball, &score_right, row_left_rocket);
+            break;
+        case LEFT_DOWN:
+        	redirect_left_down(&row_ball, &column_ball, &dir_ball, &score_right, row_left_rocket);
+            break;
         }
         printf("\033c");
     }
+  end_game(score_left, score_right);
 }
 
 int main(void) {
